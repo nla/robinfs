@@ -32,3 +32,4 @@ Limitations
 * Filesystems should have identical content
 * Will not improve single-stream performance, each file handle is only associated with a single backend
 * Writing might work but is untested, my use case is read-only
+* Only tested under FUSE 2.9.2, older versions may need modification
