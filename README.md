@@ -1,7 +1,7 @@
 robinfs
 =======
 
-A round-robin FUSE passthrough filesystem.  Based on [https://github.com/jrk/passfs][passfs]
+A round-robin FUSE passthrough filesystem.  Based on [passfs](https://github.com/jrk/passfs)
 but tweaked to support multiple roots.
 
 Use case
