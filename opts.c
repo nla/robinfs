@@ -20,7 +20,9 @@ Note specifically the enum and the fuse opt struct below which determine the ava
 /* This module borrowed from Radek Podgorny unionfs-fuse  with customisations by JC*/
 int use_readir_method2;
 int doexit;
-char* root;
+char *root[MAX_ROOTS];
+int nroots = 0;
+int seenmount = 0;
 /* this struct demonstrates the use of a structure to store automatically parsed option data (it doesn't actually have a useful function in this code)*/
 struct passFSData{unsigned long intval;char *stringval;}optData;
 /* an enumeration to generate the values for keys in the options structure */
@@ -104,10 +106,11 @@ return -1 to indicate error
 */
 	switch (key) {
 		case FUSE_OPT_KEY_NONOPT:
-			if (!root) {
-				root = make_absolute(arg); /*make a copy prefixed by CWD if necessary*/
+			if (seenmount && nroots < MAX_ROOTS) {
+				root[nroots++] = make_absolute(arg); /*make a copy prefixed by CWD if necessary*/
 				return 0;
 			}
+            seenmount = 1;
 			return 1;
 		case KEY_STATS:
 			stats_enabled = 1;
@@ -117,12 +120,13 @@ return -1 to indicate error
 		case KEY_HELP:
 			fprintf (stderr,
 			userFSnameStr "-fuse version " userFSverStr "\n"
-			"by John Cobb <j.c.cobb@qmul.ac.uk>\n"
+            "round robin pass-through filesystem\n"
+			"based on passfs by John Cobb <j.c.cobb@qmul.ac.uk>\n"
 			"with borrowings from Radek Podgorny\n"
 			"using the FUSE Filesystems in user space support\n"
 			"\n"
-			"Usage: %s [options] root_path mountpoint\n"
-			"The first argument is the directory to form the root of the filesystem\n"
+			"Usage: %s [options] mountpoint [root1 [root2 [...]]]\n"
+			"The last arguments are the directories (with identical contents) to form the root of the filesystem\n"
 			"\n"
 			"general options:\n"
 			"    -o opt,[opt...]        mount options\n"
@@ -187,17 +191,17 @@ int main(int argc, char *argv[]) {
 	optData.stringval=NULL;
 	doexit = 0;
 	use_readir_method2=0;
-	root=NULL;
+	root[0]=NULL;
 	/*initiate parameter analysis */
 	if(fuse_opt_parse(&args,(void *)&optData,userModeFS_opts,userModeFS_opt_proc)==-1) res=1;
 	else {
 		printf("\narguments to fuse_main: ");
 		for(i=0;i<args.argc;i++)printf("%s ",args.argv[i]);
 		printf("\n");
-		printf("Demo parameters: value of  -i=%lu, value of -s=",optData.intval);
+        printf("Round Robin filesystem with %d roots\n", nroots);
 		if(optData.stringval)printf("%s\n",optData.stringval);else printf("NULL\n");
 		if (!doexit) {
-			if (!root) {
+			if (nroots == 0) {
 				printf("You need to specify at least a root directory and a mount point !\n"
 				       "try -h for more information\n");
 				res=1;
@@ -208,6 +212,5 @@ int main(int argc, char *argv[]) {
 	if(!res)res= userFSMain(&args,use_readir_method2);
 	/*tidy up */
 	fuse_opt_free_args(&args);
-	if(root)free(root);
 	return res;
 }

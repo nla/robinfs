@@ -2,7 +2,7 @@
 This code uses code written by Radek Podgorny for his unionfs-fuse as a template It retains his stats,debug and opts modules as useful service routines and follows his startup structure.
 
 The initial aim is to produce a more useful template than the xmpl code that comes with the FUSE package. The template just acts as a pass through fileing system. you just give it 
-a directory and it treats that as the root of a fileing system. Not intrinsically very useful. However the code demonstrates the use of some of the parameter
+a directory and it treats that as the root[nextrr()] of a fileing system. Not intrinsically very useful. However the code demonstrates the use of some of the parameter
 analysis interfaces and can be used as a simple monitor.
 
 John Cobb
@@ -46,6 +46,12 @@ This is offered under a BSD-style license. This means you can use the code for w
 int monitor=0;
 FILE *monitor_file=NULL;
 
+unsigned int rr = 0;
+
+static int nextrr() {
+      return __sync_fetch_and_add(&rr, 1) % nroots;
+}
+
 
 static void mprintf(const char *format,...) {
 
@@ -72,7 +78,7 @@ static int userModeFS_access(const char *path, int mask) {
 
 
 	char p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root, path);
+	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 	if(monitor)mprintf("access %s,mask=%x",path,mask);
 	int res = access(p, mask);
 	if (res == -1) {
@@ -88,7 +94,7 @@ static int userModeFS_chmod(const char *path, mode_t mode) {
 
 
 	char p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root, path);
+	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 	if(monitor)mprintf("chmod %s,mode=%x",path,mode);
 	int res = chmod(p, mode);
 	if (res == -1) {
@@ -103,7 +109,7 @@ static int userModeFS_chown(const char *path, uid_t uid, gid_t gid) {
 	DBG("chown\n");
 
 	char p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root, path);
+	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 	if(monitor)mprintf("chown %s,uid=%x,gid=%x",path,uid,gid);
 	int res = lchown(p, uid, gid);
 	if (res == -1) {
@@ -166,7 +172,7 @@ static int userModeFS_getattr(const char *path, struct stat *stbuf) {
 	DBG("getattr\n");
 
 	if (stats_enabled && strcmp(path, STATS_FILENAME) == 0) {
-		memset(stbuf, 0, sizeof(stbuf));
+		memset(stbuf, 0, sizeof(*stbuf));
 		stbuf->st_mode = S_IFREG | 0444;
 		stbuf->st_nlink = 1;
 		stbuf->st_size = STATS_SIZE;
@@ -174,7 +180,7 @@ static int userModeFS_getattr(const char *path, struct stat *stbuf) {
 	}
 
 	char p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root, path);
+	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 	if(monitor)mprintf("getattr %s",path);
 	int res = lstat(p, stbuf);
 	if (res == -1) {
@@ -192,8 +198,8 @@ static int userModeFS_link(const char *from, const char *to) {
 
 
 	char t[PATHLEN_MAX],p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root, from);
-	snprintf(t, PATHLEN_MAX, "%s%s", root, to);
+	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], from);
+	snprintf(t, PATHLEN_MAX, "%s%s", root[nextrr()], to);
 	if(monitor)mprintf("link from:%s, to:%s",from,to);
 	int res = link(p, t);
 	if (res == -1) {
@@ -210,7 +216,7 @@ static int userModeFS_mkdir(const char *path, mode_t mode) {
 
 
 	char p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root, path);
+	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 
 	if(monitor)mprintf("make dir: %s,mode=%x",path,mode);
 	int res = mkdir(p, mode);
@@ -227,7 +233,7 @@ static int userModeFS_mknod(const char *path, mode_t mode, dev_t rdev) {
 	DBG("mknod\n");
 
 	char p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root, path);
+	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 	if(monitor)mprintf("make node: %s, mode=%x, dev=%x",path,mode,rdev);
     #ifdef __APPLE__
     #warning "Substituting creat for mknod - limited functionality"
@@ -259,7 +265,7 @@ static int userModeFS_open(const char *path, struct fuse_file_info *fi) {
 	}
 	else {
 		char p[PATHLEN_MAX];
-		snprintf(p, PATHLEN_MAX, "%s%s", root, path);
+		snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 
 		int fd = open(p, fi->flags);
 		if (fd == -1) {
@@ -307,7 +313,7 @@ static int userModeFS_readdirMethod1(const char *path, void *buf, fuse_fill_dir_
 	DBG("readdir\n");
 
 	char p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root, path);
+	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 	if(monitor)mprintf("readdir1 %s",path);
 	DIR *dp = opendir(p);
 	if (dp){
@@ -330,7 +336,7 @@ static int userModeFS_readdirMethod2(const char *path, void *buf, fuse_fill_dir_
 	DBG("readdir\n");
 
 	char p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root, path);
+	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 	if(monitor)mprintf("readdir2 %s",path);
 	DIR *dp = opendir(p);
 	if (dp){
@@ -351,7 +357,7 @@ static int userModeFS_readlink(const char *path, char *buf, size_t size) {
 	DBG("readlink\n");
 
 	char p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root, path);
+	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 	if(monitor)mprintf("readlink: %s",path);
 	int res = readlink(p, buf, size - 1);
 	if (res == -1) {
@@ -384,10 +390,10 @@ static int userModeFS_rename(const char *from, const char *to) {
 	DBG("rename\n");
 
 	char f[PATHLEN_MAX];
-	snprintf(f, PATHLEN_MAX, "%s%s", root, from);
+	snprintf(f, PATHLEN_MAX, "%s%s", root[nextrr()], from);
 
 	char t[PATHLEN_MAX];
-	snprintf(t, PATHLEN_MAX, "%s%s", root, to);
+	snprintf(t, PATHLEN_MAX, "%s%s", root[nextrr()], to);
 	if(monitor)mprintf("rename from:%s, to:%s",from,to);
 	int res = rename(f, t);
 	if (res == -1) {
@@ -406,7 +412,7 @@ static int userModeFS_rmdir(const char *path) {
 	DBG("rmdir\n");
 
 	char p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root, path);
+	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 	if(monitor)mprintf("rmdir: %s",path);
 	int res = rmdir(p);
 	if (res == -1) {
@@ -426,7 +432,7 @@ static int userModeFS_statfs(const char *path, struct statvfs *stbuf) {
 
 	DBG("statfs\n");
 	if(monitor)mprintf("statfs: %s",path);
-	int res = statvfs(root, stbuf);
+	int res = statvfs(root[nextrr()], stbuf);
 	if (res == -1) {
 		res=errno;
 		if(monitor)mprintf(" res=%x\n",res);
@@ -444,7 +450,7 @@ static int userModeFS_symlink(const char *from, const char *to) {
 
 
 	char t[PATHLEN_MAX];
-	snprintf(t, PATHLEN_MAX, "%s%s", root, to);
+	snprintf(t, PATHLEN_MAX, "%s%s", root[nextrr()], to);
 	if(monitor)mprintf("symlink from:%s, to:%s",from,to);
 	int res = symlink(from, t);
 	if (res == -1) {
@@ -460,7 +466,7 @@ static int userModeFS_truncate(const char *path, off_t size) {
 	DBG("truncate\n");
 
 	char p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root, path);
+	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 	if(monitor)mprintf("truncate: %s",path);
 	int res = truncate(p, size);
 	if (res == -1) {
@@ -476,7 +482,7 @@ static int userModeFS_unlink(const char *path) {
 	DBG("unlink\n");
 
 	char p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root, path);
+	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 	if(monitor)mprintf("unlink: %s",path);
 	int res = unlink(p);
 	if (res == -1) {
@@ -497,7 +503,7 @@ static int userModeFS_utime(const char *path, struct utimbuf *buf) {
 	if (stats_enabled && strcmp(path, STATS_FILENAME) == 0) return 0;
 
 	char p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root, path);
+	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 	if(monitor)mprintf("utime: %s",path);
 	int res = utime(p, buf);
 	if (res == -1) {
@@ -527,7 +533,7 @@ static int userModeFS_getxattr(const char *path, const char *name, char *value, 
 	DBG("getxattr\n");
 
 	char p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root, path);
+	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 	if(monitor)mprintf("getxattr: %s",path);
 	int res = lgetxattr(p, name, value, size);
 	if (res == -1) {
@@ -543,7 +549,7 @@ static int userModeFS_listxattr(const char *path, char *list, size_t size) {
 	DBG("listxattr\n");
 
 	char p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root, path);
+	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 	if(monitor)mprintf("listxattr: %s",path);
 	int res = llistxattr(p, list, size);
 	if (res == -1) {
@@ -559,7 +565,7 @@ static int userModeFS_removexattr(const char *path, const char *name) {
 	DBG("removexattr\n");
 
 	char p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root, path);
+	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 	if(monitor)mprintf("removexattr: %s,name=%s",path,name);
 	int res = lremovexattr(p, name);
 	if (res == -1) {
@@ -575,7 +581,7 @@ static int userModeFS_setxattr(const char *path, const char *name, const char *v
 	DBG("sexattr\n");
 
 	char p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root, path);
+	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 	if(monitor)mprintf("setxattr: %s,name=%s,value=%s",path,name,value);
 	int res = lsetxattr(p, name, value, size, flags);
 	if (res == -1) {
@@ -621,6 +627,6 @@ static struct fuse_operations userModeFS_oper = {
 int userFSMain(struct fuse_args *args,int use_readir_method2){
 	if(use_readir_method2)userModeFS_oper.readdir	= userModeFS_readdirMethod2;
 	umask(0);
-	return(fuse_main(args->argc, args->argv, &userModeFS_oper/*, NULL*/));
+	return(fuse_main(args->argc, args->argv, &userModeFS_oper, NULL));
 }
 

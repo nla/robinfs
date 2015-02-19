@@ -5,4 +5,4 @@
 CFLAGS="${CFLAGS:--Wall} $(pkg-config --cflags fuse)"
 LDFLAGS="${LDFLAGS} $(pkg-config --libs fuse)"
 
-${CC} ${CFLAGS} ${CPPFLAGS}  ${LDFLAGS} -o passfs *.c "$@"
+${CC} ${CFLAGS} ${CPPFLAGS}  ${LDFLAGS} -o robinfs *.c "$@"

@@ -1,8 +1,8 @@
 #ifndef FSNAME_H
  #define FSNAME_H
- #define userFSname passfs
+ #define userFSname robinfs
  #define userFSver 1.0
- #define userFSnameStr "passfs"
+ #define userFSnameStr "robinfs"
  #define userFSverStr "1.0"
  
 #endif
