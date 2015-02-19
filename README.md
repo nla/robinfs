@@ -4,8 +4,8 @@ robinfs
 A round-robin FUSE passthrough filesystem.  Based on [passfs](https://github.com/jrk/passfs)
 but tweaked to support multiple roots.
 
-Use case
---------
+Motivation
+----------
 
 Imagine you have 4 NFS servers sharing out the same clustered filesystem.  Due
 to CPU limitations each NFS server can only serve out content at 2.5 Gbit/s.
