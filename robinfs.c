@@ -47,6 +47,7 @@ int monitor=0;
 FILE *monitor_file=NULL;
 
 unsigned int rr = 0;
+int symlink_mode = 1;
 
 static int nextrr() {
       return __sync_fetch_and_add(&rr, 1) % nroots;
@@ -180,7 +181,7 @@ static int userModeFS_getattr(const char *path, struct stat *stbuf) {
 	}
 
 	char p[PATHLEN_MAX];
-	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
+	int namelen = snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);
 	if(monitor)mprintf("getattr %s",path);
 	int res = lstat(p, stbuf);
 	if (res == -1) {
@@ -188,6 +189,13 @@ static int userModeFS_getattr(const char *path, struct stat *stbuf) {
 		if(monitor)mprintf(" res=%x\n",res);
 		return -res;
 	}
+
+    if (symlink_mode & S_ISREG(stbuf->st_mode)) {
+        stbuf->st_mode = S_IFLNK | 0777;
+        stbuf->st_nlink = 1;
+        stbuf->st_size = namelen;
+    }
+
 	if(monitor)mprintf(" res=OK\n");
 	return 0;
 }
@@ -355,6 +363,11 @@ static int userModeFS_readdirMethod2(const char *path, void *buf, fuse_fill_dir_
 }
 static int userModeFS_readlink(const char *path, char *buf, size_t size) {
 	DBG("readlink\n");
+
+    if (symlink_mode) {
+	    snprintf(buf, size, "%s%s", root[nextrr()], path);
+        return 0;
+    }
 
 	char p[PATHLEN_MAX];
 	snprintf(p, PATHLEN_MAX, "%s%s", root[nextrr()], path);

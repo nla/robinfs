@@ -37,7 +37,8 @@ enum {
 	KEY_DIR_METHOD2,  /*the read dir method flag -D */
 	KEY_DEMO_INT,     /*the demo integer value -i=%lu */
 	KEY_DEMO_STRING,  /*the demo string value -s=%s */
-	KEY_DEMO_SPACE    /*the demo flag followed by value -n */
+	KEY_DEMO_SPACE,   /*the demo flag followed by value -n */
+    KEY_PASSTHRU 
 };
 
 
@@ -48,6 +49,7 @@ static struct fuse_opt userModeFS_opts[] = {
 	FUSE_OPT_KEY("-h", KEY_HELP),
 	FUSE_OPT_KEY("-H", KEY_FUSE_HELP),
 	FUSE_OPT_KEY("-V", KEY_VERSION),
+	FUSE_OPT_KEY("-p", KEY_PASSTHRU),
 	FUSE_OPT_KEY("stats", KEY_STATS),
 	FUSE_OPT_KEY("-d", KEY_DEBUG),
 	FUSE_OPT_KEY("-m",KEY_MONITOR),
@@ -139,6 +141,7 @@ return -1 to indicate error
 			"    -m=file                monitor to file"
 			"    -D                     implement use of offset in readdir interface"
 			"    -o stats               show statistics in the file 'stats' under the mountpoint\n"
+			"    -p                     passthrough data rather than exposing as symlinks\n"
 			"for other options use -H\n"
 			"\n",
 			outargs->argv[0]);
@@ -174,6 +177,9 @@ return -1 to indicate error
 		case KEY_DEMO_SPACE:
 			printf("demonstration parameter -n value=%s\n",arg);
 			return 0;
+        case KEY_PASSTHRU:
+            symlink_mode = 0;
+            return 0;
 		default:
 			doexit=1; /*if we don't recognise it assume it is for fuse_main */
 			return 1;
